@@ -68,7 +68,7 @@ static const double max_second_leg_age_s     = 2.0;
 static const double max_track_jump_m         = 1.0; 
 static const double max_meas_jump_m          = 0.75; // 1.0
 static const double leg_pair_separation_m    = 1.0;
-static const string fixed_frame              = "odom_combined";
+static const string fixed_frame              = "odom";
 
 
 class SavedFeature
