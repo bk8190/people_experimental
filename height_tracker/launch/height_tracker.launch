@@ -1,17 +1,29 @@
 <!-- -->
 <launch>
-  <node pkg="height_tracker" type="height_tracker" name="height_tracker" args="scan:=base_scan $(find leg_detector)/config/trained_leg_detector.yaml" output="screen"/>
+	<arg name="debug" default="true"/>
+	<arg if="$(arg debug)" name="launch_prefix" value="gdb -ex run -args"/>
+	<arg unless="$(arg debug)" name="launch_prefix" value=""/>
+	
+  <node pkg="height_tracker" type="height_tracker" name="height_tracker" output="screen" launch-prefix="$(arg launch_prefix)">
   
-  	<param name="openni_namespace" type="string" value="camera" />
-		<param name="fixed_frame"      type="string" value="/map" />
-		<param name="do_display"       type="bool"   value="true"/>
-		<param name="minimum_x"        type="double" value="0.0" />
-		<param name="maximum_x"        type="double" value="10.0" />
-		<param name="minimum_y"        type="double" value="-3.0" />
-		<param name="maximum_y"        type="double" value="3.0" />
-		<param name="minimum_z"        type="double" value="0.0" />
-		<param name="maximum_z"        type="double" value="2.5" />
+  	<param name="openni_namespace" type="string" value="camera"/>
+		<param name="fixed_frame"      type="string" value="base_link"  />
+		<param name="do_display"       type="bool"   value="true"  />
+		<!--param name="minimum_x"        type="double" value="0.0"   />
+		<param name="maximum_x"        type="double" value="10.0"  />
+		<param name="minimum_y"        type="double" value="-3.0"  />
+		<param name="maximum_y"        type="double" value="3.0"   />
+		<param name="minimum_z"        type="double" value="0.0"   />
+		<param name="maximum_z"        type="double" value="2.5"   /-->
+		
+		<param name="minimum_x"        type="double" value="0.0"   />
+		<param name="maximum_x"        type="double" value="7.0"  />
+		<param name="minimum_y"        type="double" value="-3.0"  />
+		<param name="maximum_y"        type="double" value="3.0"   />
+		<param name="minimum_z"        type="double" value="0.0"   />
+		<param name="maximum_z"        type="double" value="2.0"   />
 		
 		<remap from="height_tracker/people_tracker_measurements" to="/people_tracker_measurements"/>
+	</node>
 </launch>
 

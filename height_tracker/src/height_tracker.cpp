@@ -45,6 +45,8 @@
 #include <message_filters/time_synchronizer.h>
 
 #include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud_conversion.h>
 #include <geometry_msgs/PointStamped.h>
 
 #include "stereo_msgs/DisparityImage.h"
@@ -95,6 +97,7 @@ private:
   string dimg_window_name_;
   string limg_window_name_;
   string prob_window_name_;
+  string flattened_window_name_;
 
   bool mouse_down_;
   CvRect selection_rect_;
@@ -174,10 +177,12 @@ public:
 
     //Stereo namespace to use and fixed frame to transform cloud (robot-relative frame is probably best)
     private_nh_.param("openni_namespace", openni_namespace_, string("camera"));
-    private_nh_.param("fixed_frame", fixed_frame_, string("/map"));
+    private_nh_.param("fixed_frame", fixed_frame_, string("base_link"));
+		ROS_INFO_STREAM("OpenNI namespace=\""<<openni_namespace_<<"\", fixed frame=\""<<fixed_frame_<<"\"");
 
     //Should we output debugging visualization images?
-    private_nh_.param("do_display", do_display_, true);
+    private_nh_.param("do_display", do_display_, false);
+    ROS_INFO_STREAM("do_display = " << (do_display_==true ? "true" : "false"));
 
     //Clipping plane constants for the stereo point cloud
     private_nh_.param("minimum_x", minLX, 0.0);
@@ -195,6 +200,8 @@ public:
     private_nh_.param("flattened_height", tmp_H, 480);
     W = (unsigned int)tmp_W;
     H = (unsigned int)tmp_H;
+    
+    ROS_INFO_STREAM("Projecting cloud down to ("<<W<<","<<H<<")");
 
     //Advertise the measurements in the local namespace
     pos_pub_ = private_nh_.advertise<people_msgs::PositionMeasurement>("people_tracker_measurements",1);
@@ -205,8 +212,19 @@ public:
     image_transport::ImageTransport it(private_nh_);
     flat_pub_ = it.advertise("flattened_image", 1);
 
+		window_name_ = "Window";
+		limg_window_name_ = "limg";
+		dimg_window_name_ = "dimg";
+		prob_window_name_ = "prob";
+		flattened_window_name_ = "flattened";
+    cvNamedWindow(window_name_          .c_str(),CV_WINDOW_AUTOSIZE);
+    cvNamedWindow(limg_window_name_     .c_str(),CV_WINDOW_AUTOSIZE);
+    cvNamedWindow(dimg_window_name_     .c_str(),CV_WINDOW_AUTOSIZE);
+    cvNamedWindow(prob_window_name_     .c_str(),CV_WINDOW_AUTOSIZE);
+    cvNamedWindow(flattened_window_name_.c_str(),CV_WINDOW_AUTOSIZE);
+      
     //Subscribe to stereo cloud
-    cloud_only_sub_ = nh_.subscribe(openni_namespace_ + "/depth_registered/points ", 1, &HeightTracker::cloudCB, this);
+    cloud_only_sub_ = nh_.subscribe(openni_namespace_ + "/depth_registered/points", 1, &HeightTracker::cloudCB, this);
 
     //Listen to position measurements back from the overall people tracking filter, delaying the messages
     //until they can be transformed into the fixed_frame_ (e.g. /base_footprint)
@@ -222,14 +240,22 @@ public:
   /**
    *  Callback for the stereo point cloud, this function also does the tracking
    */
-  void cloudCB(const sensor_msgs::PointCloud::ConstPtr &cloud_ptr)
+//  void cloudCB(const sensor_msgs::PointCloud::ConstPtr &cloud_ptr)
+  void cloudCB(const sensor_msgs::PointCloud2::ConstPtr &cloud2_ptr)
   {
-    const sensor_msgs::PointCloud &raw_cloud = *cloud_ptr;
+    sensor_msgs::PointCloud raw_cloud;
+  	if( !sensor_msgs::convertPointCloud2ToPointCloud(*cloud2_ptr, raw_cloud) ) {
+  		ROS_ERROR("Could not convert point cloud!");
+  		return;
+  	}
+  
+  	ROS_INFO_STREAM("Got cloud in frame \""<<raw_cloud.header.frame_id<<"\"");
+  
     sensor_msgs::PointCloud cloud;
     try {
       tf_client_.transformPointCloud(fixed_frame_, raw_cloud, cloud);
-    } catch( ... ) {
-      ROS_ERROR("TF exception despite using message notifier.");
+    } catch( tf::TransformException e) {
+      ROS_ERROR_STREAM("TF exception despite using message notifier: "<<e.what());
       return;
     }
 
@@ -243,9 +269,12 @@ public:
     //Also incidentally compute the min/max in each dimension after clipping, which
     //can be useful debugging information
     double minX, maxX, minY, maxY, minZ, maxZ;
-    minX = maxX = cloud.points[0].x;
-    minY = maxY = cloud.points[0].y;
-    minZ = maxZ = cloud.points[0].z;
+    minX =  9999;
+    maxX = -9999;
+    minY =  9999;
+    maxY = -9999;
+    minZ =  9999;
+    maxZ = -9999;
 
     static vector<geometry_msgs::Point32> pts(100000);
     pts.clear();
@@ -266,8 +295,8 @@ public:
       }
     }
 
-    ROS_DEBUG_STREAM("X range: ["<<minX<<","<<maxX<<"] Y range: ["<<minY<<","<<maxY<<"] Z range: ["<<minZ<<","<<maxZ<<"]");
-    ROS_DEBUG_STREAM("Dropped "<<(cloud.points.size() - pts.size())<<" points out of "<<cloud.points.size()<<" total.");
+    ROS_INFO_STREAM("X range: ["<<minX<<","<<maxX<<"] Y range: ["<<minY<<","<<maxY<<"] Z range: ["<<minZ<<","<<maxZ<<"]");
+    ROS_INFO_STREAM("Dropped "<<(cloud.points.size() - pts.size())<<" points out of "<<cloud.points.size()<<" total.");
 
     //Project the remaining points down onto the ground plane (or whatever the x/y plane in fixed_frame is)
     IplImage *flattened = cvCreateImage(cvSize(W,H), 8, 1);
@@ -285,6 +314,10 @@ public:
         ((unsigned char *)(flattened->imageData + y*flattened->widthStep))[x] = val;
     }
 
+    //if(do_display_) {
+    //  cvShowImage(flattened_window_name_.c_str(), flattened);
+    //}
+    
     //If there is a new track, the height to use must be computed TODO: this should be removable soon
     if(new_track_from_measurement_)
     {
@@ -306,7 +339,7 @@ public:
       }
 
       if(do_display_)
-	cvShowImage(prob_window_name_.c_str(), probIm);
+				cvShowImage(prob_window_name_.c_str(), probIm);
 
       CvTermCriteria crit = cvTermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 10, 1.0); //Use either movement of only one pixel or 10 iterations as the termination criteria
       CvConnectedComp comp;
@@ -340,7 +373,7 @@ public:
 	int inx = top_down_window_.x + top_down_window_.width / 2;
 	int iny = top_down_window_.y + top_down_window_.height / 2;
 	windowFrameToGlobal(inx, iny, outx, outy);
-	ROS_DEBUG_STREAM("Current window frame coords are: "<<inx<<","<<iny<<" and global coords are: "<<outx<<","<<outy);
+	ROS_INFO_STREAM("Current window frame coords are: "<<inx<<","<<iny<<" and global coords are: "<<outx<<","<<outy);
 	pos.pos.x = outx;
 	pos.pos.y = outy;
 	pos.pos.z = windowDepthToGlobal(median_);
@@ -368,21 +401,23 @@ public:
     //TODO: replace with image_publishers
     if(do_display_)
       {
+      
         cvShowImage(window_name_.c_str(), annotatedFlattened);
         cvShowImage(dimg_window_name_.c_str(), windowBG);
         //cvShowImage(limg_window_name_.c_str(), left_image);
 
         if (windowImg != 0)
           cvReleaseImage(&windowImg);
-        windowImg = cvCreateImage(cvSize(left_image->width, left_image->height), IPL_DEPTH_8U, 3);
-        cvCvtColor(left_image, windowImg, CV_GRAY2BGR);
+        /*windowImg = cvCreateImage(cvSize(windowBG->width, windowBG->height), IPL_DEPTH_8U, 3);
+        cvCvtColor(windowBG, windowImg, CV_GRAY2BGR);
 
-        if (tracking_)
-          cvRectangle(windowImg, cvPoint(window_.x, window_.y), cvPoint(window_.x + window_.width, window_.y + window_.height),
+        if (tracking_) {
+          cvRectangle(windowImg,
+                      cvPoint(window_.x                , window_.y                 ),
+                      cvPoint(window_.x + window_.width, window_.y + window_.height),
                       cvScalar(255, 0, 0), 1);
-
-        cvShowImage(limg_window_name_.c_str(), windowImg);
-
+				}
+        cvShowImage(limg_window_name_.c_str(), windowImg);*/
         cvWaitKey(1);
       }
 
@@ -451,7 +486,7 @@ private:
     int x = (top_down_window_.x+top_down_window_.width/2);
     int y = (top_down_window_.y+top_down_window_.height/2);
     int dist = (xWin - x) * (xWin - x) + (yWin - y) * (yWin - y);
-    ROS_DEBUG_STREAM("Received measurement at "<<pos.pos.x<<","<<pos.pos.y<<" transformed to : "<<out.point.x<<","<<out.point.y<<" which is "<<dist<<" away from current window center");
+    ROS_INFO_STREAM("Received measurement at "<<pos.pos.x<<","<<pos.pos.y<<" transformed to : "<<out.point.x<<","<<out.point.y<<" which is "<<dist<<" away from current window center");
     
     const static int defaultW = 35;
     const static int defaultH = 55;
@@ -465,11 +500,11 @@ private:
 	if(top_down_window_.x < 0) top_down_window_.x = 0;
 	if(top_down_window_.y > 479-defaultH) top_down_window_.y = 478-defaultH;
 	if(top_down_window_.y < 0) top_down_window_.y = 0;
-	ROS_DEBUG_STREAM("Tracker assumed lost, setting window to: "<<top_down_window_.x<<","<<top_down_window_.y<<" with width: "<<top_down_window_.width<<" and height: "<<top_down_window_.height);
+	ROS_INFO_STREAM("Tracker assumed lost, setting window to: "<<top_down_window_.x<<","<<top_down_window_.y<<" with width: "<<top_down_window_.width<<" and height: "<<top_down_window_.height);
 	objID_ = pos.object_id;
 	tracking_ = true;
 	new_track_from_measurement_ = true;
-	ROS_DEBUG_STREAM("Starting a new track!");
+	ROS_INFO_STREAM("Starting a new track!");
       }
   }
 
