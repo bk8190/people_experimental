@@ -40,11 +40,9 @@
 #include "opencv/cv.h"
 #include "opencv/ml.h"
 
-#include "rosrecord/Player.h"
-
 #include "people_msgs/PositionMeasurement.h"
 #include "sensor_msgs/LaserScan.h"
-#include "roslib/Header.h"
+#include "std_msgs/Header.h"
 
 #include "tf/transform_listener.h"
 #include "tf/message_filter.h"

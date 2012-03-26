@@ -39,8 +39,6 @@
 #include "opencv/cv.h"
 #include "opencv/ml.h"
 
-#include "rosrecord/Player.h"
-
 #include "people_msgs/PositionMeasurement.h"
 #include "sensor_msgs/LaserScan.h"
 
@@ -86,6 +84,13 @@ public:
         break;
       }
 
+
+			while(true) {
+				ROS_FATAL("This function has been f&%$ed up"); // be nice and professional
+			}
+
+			/*
+
       ros::record::Player p;
       if (p.open(file, ros::Time()))
       {
@@ -109,8 +114,9 @@ public:
       }
     
         while (p.nextMsg())
-        {}
-    } 
+        {}  
+      
+    } */
     }
   }
 
