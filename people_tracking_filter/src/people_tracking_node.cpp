@@ -88,6 +88,7 @@ namespace estimation
     people_filter_vis_pub_ = nh_.advertise<sensor_msgs::PointCloud>("people_tracker_filter_visualization",10);
     people_tracker_vis_pub_ = nh_.advertise<sensor_msgs::PointCloud>("people_tracker_measurements_visualization",10);
 
+ros::Duration(3.0).sleep();
     // register message sequencer
     people_meas_sub_ = nh_.subscribe("people_tracker_measurements", 1, &PeopleTrackingNode::callbackRcv, this);
  
@@ -108,34 +109,36 @@ namespace estimation
 
 
 
-  // callback for messages
-  void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::ConstPtr& message)
-  {
-    ROS_DEBUG("Tracking node got a people position measurement (%f,%f,%f)",
-	      message->pos.x, message->pos.y, message->pos.z);
-    // get measurement in fixed frame
-    Stamped<tf::Vector3> meas_rel, meas;
-    meas_rel.setData(
-		     tf::Vector3(message->pos.x, message->pos.y, message->pos.z));
-    meas_rel.stamp_ = message->header.stamp;
-    meas_rel.frame_id_ = message->header.frame_id;
-    robot_state_.transformPoint(fixed_frame_, meas_rel, meas);
-    
-    // get measurement covariance
-    SymmetricMatrix cov(3);
-    for (unsigned int i = 0; i < 3; i++)
-      for (unsigned int j = 0; j < 3; j++)
+// callback for messages
+void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::ConstPtr& message)
+{
+	ROS_INFO("Tracking node got measurement for \"%s\" (%f,%f,%f)",message->object_id.c_str(),
+	message->pos.x, message->pos.y, message->pos.z);
+	// get measurement in fixed frame
+	Stamped<tf::Vector3> meas_rel, meas;
+	meas_rel.setData(tf::Vector3(message->pos.x, message->pos.y, message->pos.z));
+	meas_rel.stamp_ = message->header.stamp;
+	meas_rel.frame_id_ = message->header.frame_id;
+	robot_state_.transformPoint(fixed_frame_, meas_rel, meas);
+
+	// get measurement covariance
+	SymmetricMatrix cov(3);
+	for (unsigned int i = 0; i < 3; i++)
+	for (unsigned int j = 0; j < 3; j++)
 	cov(i + 1, j + 1) = message->covariance[3 * i + j];
-    
-    // ----- LOCKED ------
-    boost::mutex::scoped_lock lock(filter_mutex_);
-    
-    // update tracker if matching tracker found
-    for (list<Tracker*>::iterator it = trackers_.begin(); it != trackers_.end(); it++)
-      if ((*it)->getName() == message->object_id) {
-	(*it)->updatePrediction(message->header.stamp.toSec());
-	(*it)->updateCorrection(meas, cov);
-      }
+
+	// ----- LOCKED ------
+	boost::mutex::scoped_lock lock(filter_mutex_);
+
+	// update tracker if matching tracker found
+	for (list<Tracker*>::iterator it = trackers_.begin(); it != trackers_.end(); it++) {
+		if ((*it)->getName() == message->object_id) {
+			ROS_INFO_STREAM("Matching tracker \"" << (*it)->getName() << "\"");
+			(*it)->updatePrediction(message->header.stamp.toSec());
+			(*it)->updateCorrection(meas, cov);
+		}
+	}
+	
     // check if reliable message with no name should be a new tracker
     if (message->object_id == "" && message->reliability > reliability_threshold_) {
       double closest_tracker_dist = start_distance_min_;
