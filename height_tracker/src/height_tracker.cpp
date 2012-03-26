@@ -74,7 +74,7 @@ private:
   ros::NodeHandle &nh_;
   ros::NodeHandle private_nh_;
 
-  string stereo_namespace_;
+  string openni_namespace_;
 
   sensor_msgs::CvBridge vis_flat_bridge_;
 
@@ -118,7 +118,7 @@ private:
   ros::Subscriber cloud_only_sub_;
 
   ros::Publisher pos_pub_;
-  ros::Publisher head_target_pub_;
+//  ros::Publisher head_target_pub_;
 
   ros::Publisher marker_pub_;
   image_transport::Publisher flat_pub_;
@@ -173,16 +173,16 @@ public:
     private_nh_.param("hack_height", hack_height_, 170.0);
 
     //Stereo namespace to use and fixed frame to transform stereo cloud into (robot-relative frame is probably best)
-    private_nh_.param("stereo_namespace", stereo_namespace_, string("wide_stereo"));
-    private_nh_.param("fixed_frame", fixed_frame_, string("/base_footprint"));
+    private_nh_.param("openni_namespace", openni_namespace_, string("camera"));
+    private_nh_.param("fixed_frame", fixed_frame_, string("/map"));
 
     //Should we output debugging visualization images?
-    private_nh_.param("do_display", do_display_, false);
+    private_nh_.param("do_display", do_display_, true);
 
     //Clipping plane constants for the stereo point cloud
     private_nh_.param("minimum_x", minLX, 0.0);
     private_nh_.param("maximum_x", maxLX, 10.0);
-    private_nh_.param("minimum_y", minLY, -3.0);
+    private_nh_.param("minimum_y", minLY,-3.0);
     private_nh_.param("maximum_y", maxLY, 3.0);
     private_nh_.param("minimum_z", minLZ, 0.0);
     private_nh_.param("maximum_z", maxLZ, 2.5);
@@ -198,7 +198,7 @@ public:
 
     //Advertise the measurements in the local namespace
     pos_pub_ = private_nh_.advertise<people_msgs::PositionMeasurement>("people_tracker_measurements",1);
-    head_target_pub_ = nh_.advertise<geometry_msgs::PointStamped>("/head_controller/point_head",1);
+    //head_target_pub_ = nh_.advertise<geometry_msgs::PointStamped>("/head_controller/point_head",1);
     
     //Visualization support
     marker_pub_ = private_nh_.advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
@@ -206,7 +206,7 @@ public:
     flat_pub_ = it.advertise("flattened_image", 1);
 
     //Subscribe to stereo cloud
-    cloud_only_sub_ = nh_.subscribe(stereo_namespace_ + "/cloud", 1, &HeightTracker::cloudCB, this);
+    cloud_only_sub_ = nh_.subscribe(openni_namespace_ + "/depth_registered/points ", 1, &HeightTracker::cloudCB, this);
 
     //Listen to position measurements back from the overall people tracking filter, delaying the messages
     //until they can be transformed into the fixed_frame_ (e.g. /base_footprint)
@@ -361,7 +361,7 @@ public:
 	pos.covariance[8] = 10000.0;
 	pos.initialization = 0;
 
-	ROS_DEBUG_STREAM("Publishing position measurement from height-based tracker: "<<pos.pos.x<<","<<pos.pos.y<<","<<pos.pos.z);
+	ROS_INFO_STREAM("Publishing position measurement from height-based tracker: "<<pos.pos.x<<","<<pos.pos.y<<","<<pos.pos.z);
 	pos_pub_.publish(pos);
       }
 
