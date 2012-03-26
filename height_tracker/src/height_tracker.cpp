@@ -172,7 +172,7 @@ public:
     //TODO: render this obsolete
     private_nh_.param("hack_height", hack_height_, 170.0);
 
-    //Stereo namespace to use and fixed frame to transform stereo cloud into (robot-relative frame is probably best)
+    //Stereo namespace to use and fixed frame to transform cloud (robot-relative frame is probably best)
     private_nh_.param("openni_namespace", openni_namespace_, string("camera"));
     private_nh_.param("fixed_frame", fixed_frame_, string("/map"));
 
@@ -191,7 +191,7 @@ public:
     //More resolution means closer to true point-based meanshift but less efficient
     //Also, some amount of smoothing may not be such a bad thing
     int tmp_W, tmp_H;
-    private_nh_.param("flattened_width", tmp_W, 640);
+    private_nh_.param("flattened_width" , tmp_W, 640);
     private_nh_.param("flattened_height", tmp_H, 480);
     W = (unsigned int)tmp_W;
     H = (unsigned int)tmp_H;
