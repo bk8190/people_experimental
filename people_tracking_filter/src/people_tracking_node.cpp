@@ -85,10 +85,14 @@ namespace estimation
     people_filter_pub_ = nh_.advertise<people_msgs::PositionMeasurement>("people_tracker_filter",10);
 
     // advertise visualization
-    people_filter_vis_pub_ = nh_.advertise<sensor_msgs::PointCloud>("people_tracker_filter_visualization",10);
-    people_tracker_vis_pub_ = nh_.advertise<sensor_msgs::PointCloud>("people_tracker_measurements_visualization",10);
-
-ros::Duration(3.0).sleep();
+    people_filter_vis_pub_ = nh_.advertise<sensor_msgs::PointCloud>
+    	("people_tracker_filter_visualization",10);
+    people_tracker_vis_pub_ = nh_.advertise<sensor_msgs::PointCloud>
+    	("people_tracker_measurements_visualization",10);
+		person_position_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>
+			("goal_with_covariance",1);
+			
+		ros::Duration(3.0).sleep();
     // register message sequencer
     people_meas_sub_ = nh_.subscribe("people_tracker_measurements", 1, &PeopleTrackingNode::callbackRcv, this);
  
@@ -225,32 +229,43 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
       unsigned int i=0;
       list<Tracker*>::iterator it= trackers_.begin();
       while (it!=trackers_.end()){
-	// update prediction up to delayed time
-	(*it)->updatePrediction(ros::Time::now().toSec() - sequencer_delay);
-
-	// publish filter result
-	people_msgs::PositionMeasurement est_pos;
-	(*it)->getEstimate(est_pos);
-	est_pos.header.frame_id = fixed_frame_;
-
-	ROS_DEBUG("Publishing people tracker filter.");
-	people_filter_pub_.publish(est_pos);
-
-	// visualize filter result
-	filter_visualize[i].x = est_pos.pos.x;
-	filter_visualize[i].y = est_pos.pos.y;
-	filter_visualize[i].z = est_pos.pos.z;
-	weights[i] = *(float*)&(rgb[min(998, 999-max(1, (int)trunc( (*it)->getQuality()*999.0 )))]);
-
-	// remove trackers that have zero quality
-	ROS_INFO("Quality of tracker %s = %f",(*it)->getName().c_str(), (*it)->getQuality());
-	if ((*it)->getQuality() <= 0){
-	  ROS_INFO("Removing tracker %s",(*it)->getName().c_str());  
-	  delete *it;
-	  trackers_.erase(it++);
-	}
-	else it++;
-	i++;
+				// update prediction up to delayed time
+				(*it)->updatePrediction(ros::Time::now().toSec() - sequencer_delay);
+				
+				// publish filter result
+				people_msgs::PositionMeasurement est_pos;
+				(*it)->getEstimate(est_pos);
+				est_pos.header.frame_id = fixed_frame_;
+				
+				ROS_DEBUG("Publishing people tracker filter.");
+				people_filter_pub_.publish(est_pos);
+				
+				if( follow_one_person_ ) {
+					geometry_msgs::PoseWithCovarianceStamped p;
+					p.header = est_pos.header;
+					p.pose.pose.position = est_pos.pos;
+					p.pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+					for( int i=0; i<36; i++ ) {
+						p.pose.covariance[i] = 0;
+					}
+					person_position_pub_.publish(p);
+				}
+				
+				// visualize filter result
+				filter_visualize[i].x = est_pos.pos.x;
+				filter_visualize[i].y = est_pos.pos.y;
+				filter_visualize[i].z = est_pos.pos.z;
+				weights[i] = *(float*)&(rgb[min(998, 999-max(1, (int)trunc( (*it)->getQuality()*999.0 )))]);
+				
+				// remove trackers that have zero quality
+				ROS_INFO("Quality of tracker %s = %f",(*it)->getName().c_str(), (*it)->getQuality());
+				if ((*it)->getQuality() <= 0){
+					ROS_INFO("Removing tracker %s",(*it)->getName().c_str());  
+					delete *it;
+					trackers_.erase(it++);
+				}
+				else it++;
+				i++;
       }
       lock.unlock();
       // ------ LOCKED ------
