@@ -99,7 +99,8 @@ private:
 	string limg_window_name_;
 	string prob_window_name_;
 	string flattened_window_name_;
-ros::Time last_cb_time_;
+
+	ros::Rate max_pub_rate_;
 
 	bool mouse_down_;
 	CvRect selection_rect_;
@@ -154,7 +155,9 @@ public:
 	 * point cloud down to the ground plane.
 	 */
 	HeightTracker(ros::NodeHandle &nh) :
-		nh_(nh), private_nh_("~")
+		nh_(nh),
+		private_nh_("~"),
+		max_pub_rate_(0)
 	{
 		//Set Logger level to DEBUG
 		//log4cxx::LoggerPtr logger = log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
@@ -193,6 +196,10 @@ public:
 		private_nh_.param("maximum_y", maxLY, 3.0);
 		private_nh_.param("minimum_z", minLZ, 0.0);
 		private_nh_.param("maximum_z", maxLZ, 2.5);
+		
+		double max_pub_rate_temp;
+		private_nh_.param("max_pub_rate", max_pub_rate_temp, 2.0);
+		max_pub_rate_ = ros::Rate(max_pub_rate_temp);
 
 		//Width and height for the image to project the point cloud down into
 		//More resolution means closer to true point-based meanshift but less efficient
@@ -224,8 +231,6 @@ public:
 		cvNamedWindow(dimg_window_name_     .c_str(),CV_WINDOW_AUTOSIZE);
 		cvNamedWindow(prob_window_name_     .c_str(),CV_WINDOW_AUTOSIZE);
 		cvNamedWindow(flattened_window_name_.c_str(),CV_WINDOW_AUTOSIZE);*/
-		
-		last_cb_time_ = ros::Time::now();
 			
 		//Subscribe to stereo cloud
 		cloud_only_sub_ = nh_.subscribe(openni_namespace_ + "/depth_registered/points", 1, &HeightTracker::cloudCB, this);
@@ -247,10 +252,6 @@ public:
 //  void cloudCB(const sensor_msgs::PointCloud::ConstPtr &cloud_ptr)
 void cloudCB(const sensor_msgs::PointCloud2::ConstPtr &cloud2_ptr)
 {
-	if( ros::Time::now() - last_cb_time_ < ros::Duration(0.2) ){
-		return;
-	}
-	last_cb_time_ = ros::Time::now();
 	ROS_INFO("=============================================");
 	ROS_INFO("Cloud");
 
@@ -434,6 +435,7 @@ void cloudCB(const sensor_msgs::PointCloud2::ConstPtr &cloud2_ptr)
 
 	cvReleaseImage(&flattened);
 	cvReleaseImage(&annotatedFlattened);
+	max_pub_rate_.sleep(); // sleep to enforce loop rate
 }
 
 private:
@@ -490,11 +492,11 @@ void visualizeWindow(double left, double right, double top, double bottom, doubl
  */
 void peopleCallback(const people_msgs::PositionMeasurement::ConstPtr &pos_ptr)
 {
-	static ros::Time last_cb_(0);
+	/*static ros::Time last_cb_(0);
 	
 	if( ros::Time::now() - last_cb_ < ros::Duration(0.2) )
 		return;
-	last_cb_ = ros::Time::now();
+	last_cb_ = ros::Time::now();*/
 
 	// Transform the position measurement to this frame
 	const people_msgs::PositionMeasurement &pos = *pos_ptr;
