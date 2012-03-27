@@ -44,6 +44,7 @@
 #include <ros/ros.h>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 // people tracking stuff
 #include "tracker.h"
@@ -89,6 +90,7 @@ private:
   ros::Publisher people_filter_pub_;
   ros::Publisher people_filter_vis_pub_;
   ros::Publisher people_tracker_vis_pub_;
+  ros::Publisher person_position_pub_;
 
   ros::Subscriber people_meas_sub_;
 
