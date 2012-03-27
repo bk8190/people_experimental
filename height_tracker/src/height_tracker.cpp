@@ -252,6 +252,13 @@ public:
 //  void cloudCB(const sensor_msgs::PointCloud::ConstPtr &cloud_ptr)
 void cloudCB(const sensor_msgs::PointCloud2::ConstPtr &cloud2_ptr)
 {
+	static ros::Time last_cb_time(0);
+	if( ros::Time::now() - last_cb_time < max_pub_rate_.expectedCycleTime() ) {
+		return;
+	}
+	last_cb_time = ros::Time::now();
+	max_pub_rate_.reset();
+	
 	ROS_INFO("=============================================");
 	ROS_INFO("Cloud");
 
@@ -435,7 +442,6 @@ void cloudCB(const sensor_msgs::PointCloud2::ConstPtr &cloud2_ptr)
 
 	cvReleaseImage(&flattened);
 	cvReleaseImage(&annotatedFlattened);
-	max_pub_rate_.sleep(); // sleep to enforce loop rate
 }
 
 private:
