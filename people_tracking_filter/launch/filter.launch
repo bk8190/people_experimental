@@ -1,10 +1,5 @@
 <!-- -->
 <launch>
-<param name="people_tracker/fixed_frame" type="string" value="odom"/>
-<param name="people_tracker/freq" value="10.0"/>
-<param name="people_tracker/start_distance_min" value="0.5"/>
-<param name="people_tracker/reliability_threshold" value="0.75"/>
-<param name="people_tracker/follow_one_person" type="bool" value="true"/>
 
 <!-- Particle without velocity model covariances -->
 <!--param name="people_tracker/sys_sigma_pos_x" value="0.2"/>
@@ -23,6 +18,15 @@
 <param name="people_tracker/sys_sigma_vel_y" value="0.5"/>
 <param name="people_tracker/sys_sigma_vel_z" value="0.5"/>
 
-<node pkg="people_tracking_filter" type="people_tracker" name="people_tracker" output="screen"/>
+<node pkg="people_tracking_filter" type="people_tracker" name="people_tracker" output="screen">
+	<remap from="goal_with_covariance" to="person_tracker/goal_with_covariance"/>
+	
+	<param name="fixed_frame" type="string" value="odom"/>
+	<param name="freq" value="10.0"/>
+	<param name="start_distance_min" value="0.5"/>
+	<param name="reliability_threshold" value="0.75"/>
+	<param name="follow_one_person" type="bool" value="true"/>
+	<param name="max_pub_rate" value="10.0"/>
+</node>
 </launch>
 
