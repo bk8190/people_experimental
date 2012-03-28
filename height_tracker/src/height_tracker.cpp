@@ -362,7 +362,11 @@ public:
 			CvTermCriteria crit = cvTermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 10, 1.0); //Use either movement of only one pixel or 10 iterations as the termination criteria
 			CvConnectedComp comp;
 			
+			ros::Time t1 = ros::Time::now();
 			cvMeanShift(probIm, top_down_window_, crit, &comp);
+			ROS_INFO_STREAM(boost::format("MeanShift took %.4f seconds") %(ros::Time::now()-t1).toSec() );
+			
+			
 			top_down_window_ = comp.rect;
 			
 			cvReleaseImage(&probIm);
