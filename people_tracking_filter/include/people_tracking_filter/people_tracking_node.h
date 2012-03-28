@@ -1,13 +1,13 @@
 /*********************************************************************
 * Software License Agreement (BSD License)
-* 
+*
 *  Copyright (c) 2008, Willow Garage, Inc.
 *  All rights reserved.
-* 
+*
 *  Redistribution and use in source and binary forms, with or without
 *  modification, are permitted provided that the following conditions
 *  are met:
-* 
+*
 *   * Redistributions of source code must retain the above copyright
 *     notice, this list of conditions and the following disclaimer.
 *   * Redistributions in binary form must reproduce the above
@@ -17,7 +17,7 @@
 *   * Neither the name of the Willow Garage nor the names of its
 *     contributors may be used to endorse or promote products derived
 *     from this software without specific prior written permission.
-* 
+*
 *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -56,7 +56,7 @@
 #include <people_msgs/PositionMeasurement.h>
 #include <message_filters/time_sequencer.h>
 #include <message_filters/subscriber.h>
- 
+
 // log files
 #include <fstream>
 
@@ -67,55 +67,55 @@ namespace estimation
 class PeopleTrackingNode
 {
 public:
-  /// constructor
-  PeopleTrackingNode(ros::NodeHandle nh);
-
-  /// destructor
-  virtual ~PeopleTrackingNode();
-
-  /// callback for messages
-  void callbackRcv(const people_msgs::PositionMeasurement::ConstPtr& message);
-
-  /// callback for dropped messages
-  void callbackDrop(const people_msgs::PositionMeasurement::ConstPtr& message);
-
-  /// tracker loop
-  void spin();
-
-
+	/// constructor
+	PeopleTrackingNode(ros::NodeHandle nh);
+	
+	/// destructor
+	virtual ~PeopleTrackingNode();
+	
+	/// callback for messages
+	void callbackRcv(const people_msgs::PositionMeasurement::ConstPtr& message);
+	
+	/// callback for dropped messages
+	void callbackDrop(const people_msgs::PositionMeasurement::ConstPtr& message);
+	
+	/// tracker loop
+	void spin();
+	
+	
 private:
 
-  ros::NodeHandle nh_;
-
-  ros::Publisher people_filter_pub_;
-  ros::Publisher people_filter_vis_pub_;
-  ros::Publisher people_tracker_vis_pub_;
-  ros::Publisher person_position_pub_;
-
-  ros::Subscriber people_meas_sub_;
-
-  /// message sequencer
-  message_filters::TimeSequencer<people_msgs::PositionMeasurement>*  message_sequencer_;
-
-  /// trackers
-  std::list<Tracker*> trackers_;
-
-  // tf listener
-  tf::TransformListener robot_state_;
-
-  unsigned int tracker_counter_;
-  double freq_, start_distance_min_, reliability_threshold_;
-  BFL::StatePosVel sys_sigma_;
-  std::string fixed_frame_;
-  boost::mutex filter_mutex_;
-
-  sensor_msgs::PointCloud  meas_cloud_;
-  unsigned int meas_visualize_counter_;
-
-  // Track only one person who the robot will follow.
-  bool follow_one_person_;
-
-
+	ros::NodeHandle nh_;
+	
+	ros::Publisher people_filter_pub_;
+	ros::Publisher people_filter_vis_pub_;
+	ros::Publisher people_tracker_vis_pub_;
+	ros::Publisher person_position_pub_;
+	
+	ros::Subscriber people_meas_sub_;
+	
+	/// message sequencer
+	message_filters::TimeSequencer<people_msgs::PositionMeasurement>*  message_sequencer_;
+	
+	/// trackers
+	std::list<Tracker*> trackers_;
+	
+	// tf listener
+	tf::TransformListener robot_state_;
+	
+	unsigned int tracker_counter_;
+	double freq_, start_distance_min_, reliability_threshold_;
+	BFL::StatePosVel sys_sigma_;
+	std::string fixed_frame_;
+	boost::mutex filter_mutex_;
+	
+	sensor_msgs::PointCloud  meas_cloud_;
+	unsigned int meas_visualize_counter_;
+	
+	// Track only one person who the robot will follow.
+	bool follow_one_person_;
+	
+	
 }; // class
 
 }; // namespace
