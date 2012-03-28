@@ -111,8 +111,6 @@ PeopleTrackingNode::~PeopleTrackingNode()
 };
 
 
-
-
 // callback for messages
 void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::ConstPtr& message)
 {
@@ -189,7 +187,6 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 	lock.unlock();
 	// ------ LOCKED ------
 	
-	
 	// visualize measurement
 	meas_cloud_.points[0].x = meas[0];
 	meas_cloud_.points[0].y = meas[1];
@@ -197,7 +194,6 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 	meas_cloud_.header.frame_id = meas.frame_id_;
 	people_tracker_vis_pub_.publish(meas_cloud_);
 }
-
 
 
 // callback for dropped messages
@@ -216,15 +212,15 @@ void PeopleTrackingNode::spin()
 	ROS_INFO("People tracking manager started.");
 	
 	ros::Rate loop_rate(freq_);
-	ros::Time last_pub = ros::Time::now();
+	ros::Time last_run = ros::Time::now();
 	
 	while (ros::ok())
 	{
-		while( ros::Time::now() - last_pub < loop_rate.expectedCycleTime() ) {
+		while( ros::Time::now() - last_run < loop_rate.expectedCycleTime() ) {
 			ros::spinOnce();
 			ros::Duration(0.05).sleep();
 		}
-		last_pub = ros::Time::now();
+		last_run = ros::Time::now();
 	
 		// ------ LOCKED ------
 		boost::mutex::scoped_lock lock(filter_mutex_);
@@ -294,12 +290,7 @@ void PeopleTrackingNode::spin()
 	}
 };
 
-
 }; // namespace
-
-
-
-
 
 
 // ----------
