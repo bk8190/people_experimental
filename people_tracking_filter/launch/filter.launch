@@ -22,7 +22,7 @@
 	<remap from="goal_with_covariance" to="person_tracker/goal_with_covariance"/>
 	
 	<param name="fixed_frame"        type="string" value="odom"/>
-	<param name="freq"                             value="10.0"/>
+	<param name="freq"                             value="15.0"/>
 	<param name="start_distance_min"               value="0.5"/>
 	<param name="reliability_threshold"            value="0.75"/>
 	<param name="follow_one_person"    type="bool" value="true"/>

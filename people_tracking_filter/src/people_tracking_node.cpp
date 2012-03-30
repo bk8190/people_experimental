@@ -47,7 +47,7 @@ using namespace tf;
 using namespace BFL;
 using namespace message_filters;
 
-static const double       sequencer_delay            = 0.8; //TODO: this is probably too big, it was 0.8
+static const double       sequencer_delay            = 0.3; //TODO: this is probably too big, it was 0.8
 static const unsigned int sequencer_internal_buffer  = 100;
 static const unsigned int sequencer_subscribe_buffer = 10;
 static const unsigned int num_particles_tracker      = 1000;
@@ -95,7 +95,6 @@ PeopleTrackingNode::PeopleTrackingNode(ros::NodeHandle nh)
 	ros::Duration(3.0).sleep();
 	// register message sequencer
 	people_meas_sub_ = nh_.subscribe("people_tracker_measurements", 10, &PeopleTrackingNode::callbackRcv, this);
-	
 }
 
 
@@ -116,6 +115,7 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 {
 	ROS_INFO("Tracking node got measurement for \"%s\" (%f,%f,%f)",message->object_id.c_str(),
 	         message->pos.x, message->pos.y, message->pos.z);
+	
 	// get measurement in fixed frame
 	Stamped<tf::Vector3> meas_rel, meas;
 	meas_rel.setData(tf::Vector3(message->pos.x, message->pos.y, message->pos.z));
@@ -151,6 +151,7 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 			if (dst < closest_tracker_dist)
 				closest_tracker_dist = dst;
 		}
+		
 		// initialize a new tracker
 		if (follow_one_person_)
 			cout << "Following one person" << endl;
@@ -163,9 +164,8 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 			tf::Stamped<tf::Point> loc(pt, message->header.stamp, message->header.frame_id);
 			robot_state_.transformPoint("base_link", loc, loc);
 			float cur_dist;
-			if ((cur_dist = pow(loc[0], 2.0) + pow(loc[1], 2.0)) < tracker_init_dist) {
-			
-				cout << "starting new tracker" << endl;
+			if ((cur_dist = pow(loc[0], 2.0) + pow(loc[1], 2.0)) < tracker_init_dist)
+			{
 				stringstream tracker_name;
 				StatePosVel prior_sigma(tf::Vector3(sqrt(cov(1, 1)), sqrt(cov(
 				                                      2, 2)), sqrt(cov(3, 3))), tf::Vector3(0.0000001, 0.0000001, 0.0000001));
@@ -201,9 +201,7 @@ void PeopleTrackingNode::callbackDrop(const people_msgs::PositionMeasurement::Co
 {
 	ROS_INFO("DROPPED PACKAGE for %s from %s with delay %f !!!!!!!!!!!",
 	         message->object_id.c_str(), message->name.c_str(), (ros::Time::now() - message->header.stamp).toSec());
-	         
 }
-
 
 
 // filter loop
