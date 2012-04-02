@@ -282,12 +282,12 @@ public:
 	// If a tracker was already assigned to a person, keep this assignment when the distance between them is not too large.
 	void peopleCallback(const people_msgs::PositionMeasurement::ConstPtr& people_meas)
 	{
-		ROS_INFO("===============================");
-		ROS_INFO("Got People");
+		ROS_DEBUG("===============================");
+		ROS_DEBUG("Got People");
 		
 		// If there are no legs, return.
 		if (saved_features_.empty()) {
-			ROS_INFO("Nothing to do here, no legs.");
+			ROS_DEBUG("Nothing to do here, no legs.");
 			return;
 		}
 
@@ -325,7 +325,7 @@ public:
 		} catch(tf::TransformException e) {
 			ROS_WARN_STREAM("TF exception spot 7. Couldn't convert \""<<people_meas->header.frame_id<<"\" to \""<<fixed_frame<<"\" at time "<<people_meas->header.stamp<<" - "<<e.what());
 		}
-		ROS_INFO_STREAM(boost::format("Measurement at (%.2f,%.2f,%.2f)")
+		ROS_DEBUG_STREAM(boost::format("Measurement at (%.2f,%.2f,%.2f)")
 			%dest_loc.getX() %dest_loc.getY() %dest_loc.getZ() );
 		
 	
@@ -334,7 +334,7 @@ public:
 		{
 			(*it1)->dist_to_person_ = planeDist(dest_loc, (*it1)->position_);
 			
-			ROS_INFO_STREAM(boost::format("Leg id %s, obj id %s at (%.2f,%.2f,%.2f) has distance %.2f")
+			ROS_DEBUG_STREAM(boost::format("Leg id %s, obj id %s at (%.2f,%.2f,%.2f) has distance %.2f")
 				% (*it1)->id_ % (*it1)->object_id % (*it1)->position_.getX() % (*it1)->position_.getY() % (*it1)->position_.getZ() % (*it1)->dist_to_person_ );
 		}
 
@@ -508,8 +508,8 @@ public:
 		last_cb_time = ros::Time::now();
 		max_pub_rate_.reset();
 		
-		ROS_INFO("===============================");
-		ROS_INFO("Got scan");
+		ROS_DEBUG("===============================");
+		ROS_DEBUG("Got scan");
 		
 		ScanProcessor processor(*scan, mask_);
 
@@ -722,7 +722,7 @@ public:
 			if ((*sf_iter)->object_id != ""){
 				tracker_measurements_pub_.publish(pos);
 				
-				ROS_INFO_STREAM(boost::format(
+				ROS_DEBUG_STREAM(boost::format(
 					"Publishing measurement for leg \"%s\", vel=%.2f reliability=%.2f, covariance=%.2f")
 					%(*sf_iter)->object_id %est.vel_.length() %reliability %covariance );
 			}
