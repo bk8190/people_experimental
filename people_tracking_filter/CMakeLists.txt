@@ -29,9 +29,10 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-
 rosbuild_add_executable(people_tracker src/people_tracking_node.cpp)
 target_link_libraries(people_tracker people_tracking_filter)
+target_link_libraries(people_tracker PTSounds)
+
 rosbuild_add_library(people_tracking_filter 
                      src/uniform_vector.cpp 
                        src/gaussian_vector.cpp 

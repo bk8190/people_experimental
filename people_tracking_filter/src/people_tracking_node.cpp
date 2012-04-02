@@ -55,11 +55,14 @@ static const double       tracker_init_dist          = 4.0;
 
 namespace estimation
 {
+
+
 // constructor
-PeopleTrackingNode::PeopleTrackingNode(ros::NodeHandle nh)
-	: nh_(nh),
-	  robot_state_(),
-	  tracker_counter_(0)
+PeopleTrackingNode::PeopleTrackingNode(ros::NodeHandle nh) :
+	nh_(nh),
+	sound_player_(nh_, "sounds"),
+	robot_state_(),
+	tracker_counter_(0)
 {
 	// initialize
 	meas_cloud_.points = vector<geometry_msgs::Point32>(1);
@@ -80,7 +83,9 @@ PeopleTrackingNode::PeopleTrackingNode(ros::NodeHandle nh)
 	local_nh.param("sys_sigma_vel_y"      , sys_sigma_.vel_[1]    , 0.0);
 	local_nh.param("sys_sigma_vel_z"      , sys_sigma_.vel_[2]    , 0.0);
 	local_nh.param("follow_one_person"    , follow_one_person_    , false);
+	local_nh.param("acquisition_quality_threshold"    , acquisition_quality_threshold_ , .15);
 	
+	ROS_INFO_STREAM(boost::format("[people_tracking_node] Acquisition quality threshold = %.2f") %acquisition_quality_threshold_);
 	// advertise filter output
 	people_filter_pub_ = nh_.advertise<people_msgs::PositionMeasurement>("people_tracker_filter",10);
 	
@@ -152,10 +157,13 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 				closest_tracker_dist = dst;
 		}
 		
+		if (follow_one_person_) {
+			ROS_DEBUG("Following one person");
+		}
+		
 		// initialize a new tracker
-		if (follow_one_person_)
-			cout << "Following one person" << endl;
-		if (message->initialization == 1 && ((!follow_one_person_ && (closest_tracker_dist >= start_distance_min_)) || (follow_one_person_ && trackers_.empty()))) {
+		if (message->initialization == 1 && ((!follow_one_person_ && (closest_tracker_dist >= start_distance_min_)) || (follow_one_person_ && trackers_.empty())))
+		{
 			//if (closest_tracker_dist >= start_distance_min_ || message->initialization == 1){
 			//if (message->initialization == 1 && trackers_.empty()){
 			ROS_INFO("Passed crazy conditional.");
@@ -167,14 +175,11 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 			if ((cur_dist = pow(loc[0], 2.0) + pow(loc[1], 2.0)) < tracker_init_dist)
 			{
 				stringstream tracker_name;
-				StatePosVel prior_sigma(tf::Vector3(sqrt(cov(1, 1)), sqrt(cov(
-				                                      2, 2)), sqrt(cov(3, 3))), tf::Vector3(0.0000001, 0.0000001, 0.0000001));
+				StatePosVel prior_sigma(tf::Vector3(sqrt(cov(1, 1)), sqrt(cov(2, 2)), sqrt(cov(3, 3))), tf::Vector3(0.0000001, 0.0000001, 0.0000001));
 				tracker_name << "person " << tracker_counter_++;
-				Tracker* new_tracker = new TrackerKalman(tracker_name.str(),
-				    sys_sigma_);
+				Tracker* new_tracker = new TrackerKalman(tracker_name.str(), sys_sigma_);
 				//Tracker* new_tracker = new TrackerParticle(tracker_name.str(), num_particles_tracker, sys_sigma_);
-				new_tracker->initialize(meas, prior_sigma,
-				                        message->header.stamp.toSec());
+				new_tracker->initialize(meas, prior_sigma, message->header.stamp.toSec());
 				trackers_.push_back(new_tracker);
 				ROS_INFO("Initialized new tracker %s", tracker_name.str().c_str());
 			}
@@ -193,14 +198,6 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 	meas_cloud_.points[0].z = meas[2];
 	meas_cloud_.header.frame_id = meas.frame_id_;
 	people_tracker_vis_pub_.publish(meas_cloud_);
-}
-
-
-// callback for dropped messages
-void PeopleTrackingNode::callbackDrop(const people_msgs::PositionMeasurement::ConstPtr& message)
-{
-	ROS_INFO("DROPPED PACKAGE for %s from %s with delay %f !!!!!!!!!!!",
-	         message->object_id.c_str(), message->name.c_str(), (ros::Time::now() - message->header.stamp).toSec());
 }
 
 
@@ -228,6 +225,10 @@ void PeopleTrackingNode::spin()
 		vector<float> weights(trackers_.size());
 		sensor_msgs::ChannelFloat32 channel;
 		
+		if( trackers_.size() == 0 ) {
+			sound_player_.setState(PTSounds::state_searching);
+		}
+		
 		// loop over trackers
 		unsigned int i=0;
 		list<Tracker*>::iterator it= trackers_.begin();
@@ -244,7 +245,8 @@ void PeopleTrackingNode::spin()
 			ROS_DEBUG("Publishing people tracker filter.");
 			people_filter_pub_.publish(est_pos);
 			
-			if( follow_one_person_ ) {
+			if( follow_one_person_ )
+			{
 				geometry_msgs::PoseWithCovarianceStamped p;
 				p.header = est_pos.header;
 				p.pose.pose.position = est_pos.pos;
@@ -253,6 +255,13 @@ void PeopleTrackingNode::spin()
 					p.pose.covariance[i] = 0;
 				}
 				person_position_pub_.publish(p);
+				
+				if( (*it)->getQuality() > acquisition_quality_threshold_ ) {
+					sound_player_.setState(PTSounds::state_tracking);
+				}
+				else {
+					sound_player_.setState(PTSounds::state_searching);				
+				}
 			}
 			
 			// visualize filter result
@@ -269,11 +278,11 @@ void PeopleTrackingNode::spin()
 				trackers_.erase(it++);
 			}
 			else it++;
+			
 			i++;
 		}
 		lock.unlock();
 		// ------ LOCKED ------
-		
 		
 		// visualize all trackers
 		channel.name = "rgb";
@@ -284,6 +293,7 @@ void PeopleTrackingNode::spin()
 		people_cloud.points  = filter_visualize;
 		people_filter_vis_pub_.publish(people_cloud);
 		
+		sound_player_.update();
 		ros::spinOnce();
 	}
 };
