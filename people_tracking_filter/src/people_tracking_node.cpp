@@ -126,7 +126,15 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 	meas_rel.setData(tf::Vector3(message->pos.x, message->pos.y, message->pos.z));
 	meas_rel.stamp_ = message->header.stamp;
 	meas_rel.frame_id_ = message->header.frame_id;
-	robot_state_.transformPoint(fixed_frame_, meas_rel, meas);
+	try
+	{
+		robot_state_.transformPoint(fixed_frame_, meas_rel, meas);
+	}
+	catch( tf::TransformException e )
+	{
+		ROS_WARN_STREAM("[people_tracker] Could not transform measurement, "<<e.what());
+		return;
+	}
 	
 	// get measurement covariance
 	SymmetricMatrix cov(3);
@@ -167,10 +175,19 @@ void PeopleTrackingNode::callbackRcv(const people_msgs::PositionMeasurement::Con
 			//if (closest_tracker_dist >= start_distance_min_ || message->initialization == 1){
 			//if (message->initialization == 1 && trackers_.empty()){
 			ROS_INFO("Passed crazy conditional.");
+			
 			tf::Point pt;
 			tf::pointMsgToTF(message->pos, pt);
 			tf::Stamped<tf::Point> loc(pt, message->header.stamp, message->header.frame_id);
-			robot_state_.transformPoint("base_link", loc, loc);
+			try {
+				robot_state_.transformPoint("base_link", loc, loc);
+			}
+			catch( tf::TransformException e )
+			{
+				ROS_ERROR_STREAM("Could not transform message: "<<e.what());
+				return;
+			}
+			
 			float cur_dist;
 			if ((cur_dist = pow(loc[0], 2.0) + pow(loc[1], 2.0)) < tracker_init_dist)
 			{
