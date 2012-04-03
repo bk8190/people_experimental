@@ -10,6 +10,9 @@
 	<!-- Face detection -->
 	<include file="$(find face_detector)/launch/face_detector.launch"/>
 	
+	<!-- OpenNI body detection -->
+	<include file="$(find bk_launch)/launch/skeletal_tracker.launch"/>
+	
 	<!-- Overall Kalman filter for tracking -->
 	<include file="$(find people_tracking_filter)/launch/filter.launch"/>
 	
