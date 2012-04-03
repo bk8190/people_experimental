@@ -21,12 +21,12 @@
 		<remap from="goal_with_covariance" to="person_tracker/goal_with_covariance"/>
 		
 		<param name="fixed_frame"        type="string" value="odom"/>
-		<param name="freq"                             value="15.0"/>
+		<param name="freq"                             value="10.0"/>
 		<param name="start_distance_min"               value="0.5"/>
 		<param name="reliability_threshold"            value="0.75"/>
 		<param name="follow_one_person"    type="bool" value="true"/>
 		<param name="max_pub_rate"                     value="10.0"/>
-		<param name="acquisition_quality_threshold"    value="0.15"/>
+		<param name="acquisition_quality_threshold"    value="0.60"/>
 		
 		<!-- Paramter file for sound player -->
 		<rosparam file="$(find bk_configs)/common/vision/person_tracker_sounds.yaml"
