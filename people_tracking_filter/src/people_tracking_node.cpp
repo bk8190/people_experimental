@@ -60,7 +60,7 @@ namespace estimation
 // constructor
 PeopleTrackingNode::PeopleTrackingNode(ros::NodeHandle nh) :
 	nh_(nh),
-	sound_player_(nh_, "sounds"),
+	sound_player_(nh_, "people_tracker/sounds"),
 	robot_state_(),
 	tracker_counter_(0)
 {

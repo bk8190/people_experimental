@@ -1,5 +1,9 @@
 <!---->
 <launch>
+
+	<!-- Start a soundplay node -->
+	<node pkg="sound_play" type="soundplay_node.py" name="soundplay_node" />
+	
 	<!-- Leg detection -->
 	<include file="$(find leg_detector)/launch/leg_detector.launch"/>
 	
@@ -8,4 +12,5 @@
 	
 	<!-- Overall Kalman filter for tracking -->
 	<include file="$(find people_tracking_filter)/launch/filter.launch"/>
+	
 </launch>
