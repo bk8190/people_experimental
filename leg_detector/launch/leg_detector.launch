@@ -4,6 +4,7 @@
   	<remap from="scan" to="base_laser1_scan"/>
   	
   	<param name="max_pub_rate" type="double" value="5.0"/>
+  	<param name="connected_thresh" type="double" value="0.06"/> <!-- Default 0.06 -->
   </node>
 </launch>
 
