@@ -213,7 +213,7 @@ public:
 
 	CvRTrees forest;
 
-	float connected_thresh_;
+	double connected_thresh_;
 	int feat_count_;
 
 	char save_[100];
@@ -255,9 +255,12 @@ public:
 		}
 
 		double max_pub_rate_temp;
-		priv_nh_.param("max_pub_rate", max_pub_rate_temp, 1.0);
+		priv_nh_.param("max_pub_rate"    , max_pub_rate_temp, 1.0);
 		max_pub_rate_ = ros::Rate(max_pub_rate_temp);
-		ROS_INFO_STREAM("Loop rate is " << max_pub_rate_temp << "Hz");
+		priv_nh_.param("connected_thresh", connected_thresh_, .06);
+		
+		ROS_INFO_STREAM("Loop rate is "       << max_pub_rate_temp << "Hz");
+		ROS_INFO_STREAM("connected_thresh = " << connected_thresh_);
 		
 		// advertise topics
 		leg_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("kalman_filt_cloud",10);
@@ -277,6 +280,8 @@ public:
 	}
 
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 	// Find the tracker that is closest to this person message
 	// If a tracker was already assigned to a person, keep this assignment when the distance between them is not too large.
@@ -339,7 +344,7 @@ public:
 		}
 
 		// Try to find one or two trackers with the same label and within the max distance of the person.
-		cout << "Looking for two legs" << endl;
+		ROS_DEBUG("Looking for two legs");
 		it2 = end;
 		for (it1 = begin; it1 != end; ++it1)
 		{
@@ -365,7 +370,7 @@ public:
 		// If we found two legs with the right label and within the max distance, all is good, return.
 		if (it1 != end && it2 != end) 
 		{
-			cout << "Found matching pair. The second distance was " << (*it1)->dist_to_person_ << endl;
+			ROS_DEBUG_STREAM("Found matching pair. The second distance was " << (*it1)->dist_to_person_ );
 			return;
 		}
 
@@ -375,7 +380,7 @@ public:
 		//   * doesn't yet have a label  (=valid precondition),
 		//   * is within the max distance,
 		//   * is less than max_second_leg_age_s old.
-		cout << "Looking for one leg plus one new leg" << endl;
+		ROS_DEBUG("Looking for one leg plus one new leg");
 		float dist_between_legs, closest_dist_between_legs;
 		if (it2 != end) 
 		{
@@ -412,19 +417,19 @@ public:
 			// If we found a close, unlabeled leg, set it's label.
 			if (closest != end) 
 			{
-	cout << "Replaced one leg with a distance of " << closest_dist << " and a distance between the legs of " << closest_dist_between_legs << endl;
+	ROS_DEBUG_STREAM("Replaced one leg with a distance of " << closest_dist << " and a distance between the legs of " << closest_dist_between_legs);
 	(*closest)->object_id = people_meas->object_id;
 			}
 			else 
 			{
-	cout << "Returned one matched leg only" << endl;
+	ROS_DEBUG("Returned one matched leg only");
 			}
 			
 			// Regardless of whether we found a second leg, return.
 			return;
 		}
 
-		cout << "Looking for a pair of new legs" << endl;
+		ROS_DEBUG("Looking for a pair of new legs");
 		// If we didn't find any legs with this person's label, try to find two unlabeled legs that are close together and close to the tracker.
 		it1 = saved_features_.begin();
 		it2 = saved_features_.begin();
@@ -479,26 +484,27 @@ public:
 		{
 			(*closest1)->object_id = people_meas->object_id;
 			(*closest2)->object_id = people_meas->object_id;
-			cout << "Found a completely new pair with total distance " << closest_pair_dist << " and a distance between the legs of " << closest_dist_between_legs << endl;
+			ROS_DEBUG_STREAM("Found a completely new pair with total distance " << closest_pair_dist << " and a distance between the legs of " << closest_dist_between_legs);
 			return;
 		}
 
-		cout << "Looking for just one leg" << endl;
+		ROS_DEBUG("Looking for just one leg");
 		// No pair worked, try for just one leg.
 		if (closest != end)
 		{
 			(*closest)->object_id = people_meas->object_id;
-			cout << "Returned one new leg only" << endl;
+			ROS_DEBUG("Returned one new leg only");
 			return;
 		}
 
-		cout << "Nothing matched" << endl;
+		ROS_DEBUG("Nothing matched");
 	}
 
 
 
 
-
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 	void laserCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	{
 		static ros::Time last_cb_time(0);
@@ -514,7 +520,7 @@ public:
 		ScanProcessor processor(*scan, mask_);
 
 		processor.splitConnected(connected_thresh_);
-		processor.removeLessThan(5);
+		processor.removeLessThan(3);
 
 		CvMat* tmp_mat = cvCreateMat(1,feat_count_,CV_32FC1);
 
@@ -544,6 +550,7 @@ public:
 		}
 
 
+		string s = "values are: ";
 		// Detection step: build up the set of "candidate" clusters
 		list<SampleSet*> candidates;
 		for (list<SampleSet*>::iterator i = processor.getClusters().begin();
@@ -555,11 +562,13 @@ public:
 			for (int k = 0; k < feat_count_; k++)
 				tmp_mat->data.fl[k] = (float)(f[k]);
 
+			s += ((boost::format(", %.1f") % forest.predict( tmp_mat )).str());
 			if (forest.predict( tmp_mat ) > 0)
 			{
 				candidates.push_back(*i);
 			}
 		}
+		ROS_DEBUG_STREAM(s);
 
 
 		// For each candidate, find the closest tracker (within threshold) and add to the match list
