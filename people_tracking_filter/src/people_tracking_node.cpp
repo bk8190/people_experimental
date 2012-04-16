@@ -259,7 +259,8 @@ void PeopleTrackingNode::spin()
 			(*it)->getEstimate(est_pos);
 			est_pos.header.frame_id = fixed_frame_;
 			
-			ROS_DEBUG("Publishing people tracker filter.");
+			ROS_DEBUG_STREAM(boost::format("Publishing people tracker filter, size %d, (%.2f,%.2f)")
+			  %trackers_.size() %est_pos.pos.x %est_pos.pos.y );
 			people_filter_pub_.publish(est_pos);
 			
 			if( follow_one_person_ )
