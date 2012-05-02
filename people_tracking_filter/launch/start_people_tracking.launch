@@ -1,9 +1,6 @@
 <!---->
 <launch>
 
-	<!-- Start a soundplay node -->
-	<node pkg="sound_play" type="soundplay_node.py" name="soundplay_node" />
-	
 	<!-- Leg detection -->
 	<include file="$(find leg_detector)/launch/leg_detector.launch"/>
 	
@@ -11,6 +8,7 @@
 	<include file="$(find face_detector)/launch/face_detector.launch"/>
 	
 	<!-- OpenNI body detection -->
+	<include file="$(find bk_launch)/launch/similarity_plots.launch"/>
 	<include file="$(find bk_launch)/launch/skeletal_tracker.launch"/>
 	
 	<!-- Overall Kalman filter for tracking -->
